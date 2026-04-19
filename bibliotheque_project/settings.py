@@ -1,19 +1,23 @@
-"""
-Django settings for bibliotheque_project project.
-TP Django REST Framework — API Bibliothèque Complète
-"""
-
 from pathlib import Path
 from datetime import timedelta
+import os
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-tp-drf-bibliotheque-changez-moi-en-production'
+# 🔐 Sécurité
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-change-me'
+)
 
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+# Après DEBUG = ...
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+
+# ─── Apps ─────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -21,29 +25,41 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Packages tiers
+
     'rest_framework',
+    'rest_framework_simplejwt',
     'django_filters',
-    # Notre application
+    'corsheaders',
+
     'api',
 ]
 
+# ─── Database (Render compatible) ─────────────
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        ssl_require=False
+    )
+}
+
+
+
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # ← ajouter ici
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    ...
 ]
 
+# ─── URLs / Templates ─────────────────────────
 ROOT_URLCONF = 'bibliotheque_project.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -58,13 +74,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'bibliotheque_project.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
+# ─── Passwords ───────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -72,15 +82,26 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ─── Langue ──────────────────────────────────
 LANGUAGE_CODE = 'fr-fr'
-TIME_ZONE = 'Europe/Paris'
+TIME_ZONE = 'UTC'
+
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+# ─── STATIC FILES ──────────────────────────
+
+STATIC_URL = '/static/'
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ─── Configuration Django REST Framework ───────────────────────────────────
+# ─── DRF ─────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -98,9 +119,13 @@ REST_FRAMEWORK = {
     ],
 }
 
-# ─── Configuration JWT ─────────────────────────────────────────────────────
+# ─── JWT ─────────────────────────────────────
+# Remplacer la config SIMPLE_JWT par :
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+# Et ajouter cette ligne séparément (niveau racine) :
+CORS_ALLOW_ALL_ORIGINS = True
